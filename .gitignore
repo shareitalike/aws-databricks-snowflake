@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AWS credentials
+.aws/
+credentials
+
+# Local testing
+output/
+tmp/
+.pytest_cache/
+
+# Personal study notes (NOT for interviewers)
+LEARNING_GUIDE.md
+RUNBOOK.md

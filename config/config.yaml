@@ -1,0 +1,93 @@
+# =============================================================================
+# Real-Time Event Analytics Platform — Configuration
+# =============================================================================
+# INTERVIEW NOTE: Why centralize config in YAML?
+# In a real company, you'd have dev/staging/prod config files. Centralizing
+# avoids hardcoded values scattered across Lambda, Databricks, and Snowflake.
+# Sensitive values (passwords, keys) belong in AWS Secrets Manager or
+# Databricks Secrets — NEVER in source control.
+#
+# INTERVIEW NOTE (scaling): This config drives a free-tier setup. At scale,
+# you'd increase shard_count (e.g., 10 shards = 10 MB/s = 10K records/s),
+# use Glue G.2X workers, and Snowflake MEDIUM+ warehouse.
+# =============================================================================
+
+aws:
+  region: "ap-south-1"
+  account_id: "987684850401"       # Updated with your ID
+
+kinesis:
+  stream_name: "user-activity-stream"
+  shard_count: 1                          # 1 shard = 1 MB/s = 1000 rec/s
+  # Cost: ~$11/month. Delete when not studying.
+
+s3:
+  bucket_name: "pyspark-analytics-987684850401"         # Suggested unique name
+  bronze_prefix: "bronze/events"
+  silver_prefix: "silver/events"
+  gold_prefix: "gold"
+  quarantine_prefix: "quarantine/events"
+  metadata_prefix: "metadata"             # Stores watermark files
+
+lambda:
+  function_name: "kinesis-event-processor"
+  runtime: "python3.11"
+  timeout_seconds: 60
+  memory_mb: 256
+  batch_size: 100
+
+databricks:
+  cluster_type: "community_edition"       # Free single-node cluster
+  spark_version: "13.3 LTS"
+  # INTERVIEW NOTE: Community Edition gives you a single-node Spark cluster.
+  # Limited to ~15 GB RAM. Sufficient for 10K events. At scale, you'd use
+  # multi-node clusters with autoscaling (2-8 workers).
+
+snowflake:
+  account: "YOUR_SNOWFLAKE_ACCOUNT"
+  warehouse: "COMPUTE_XS"                 # X-Small = 1 credit/hour
+  database: "EVENT_ANALYTICS"
+  schema: "ANALYTICS"
+  auto_suspend_seconds: 60                # Suspend after 60s idle — cost control
+  # INTERVIEW NOTE: X-Small is the cheapest warehouse ($2/credit).
+  # Auto-suspend at 60s means you pay only for active query time.
+  # At scale, MEDIUM warehouse + query caching handles dashboards.
+
+athena:
+  database_name: "event_analytics"
+  output_location: "s3://pyspark_analytics_987684850401/athena-results/"
+
+# ---------------------------------------------------------------------------
+# Event simulation parameters
+# ---------------------------------------------------------------------------
+producer:
+  events_per_second: 10
+  batch_size: 25
+  total_events: 5000                      # Free-tier safe volume
+  bad_record_percentage: 5
+
+  event_distribution:
+    product_view: 60
+    add_to_cart: 20
+    purchase: 10
+    login: 5
+    logout: 5
+
+  devices:
+    mobile: 55
+    desktop: 35
+    tablet: 10
+
+  countries:
+    - US
+    - IN
+    - GB
+    - DE
+    - FR
+    - JP
+    - BR
+    - CA
+    - AU
+    - SG
+    - AE
+    - KR
