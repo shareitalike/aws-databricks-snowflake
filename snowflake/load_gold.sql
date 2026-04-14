@@ -1,36 +1,11 @@
 -- =============================================================================
 -- Snowflake Data Loading - S3 Gold Layer → Snowflake Tables
--- =============================================================================
--- INTERVIEW NOTE: Snowflake reads directly from S3 using external stages.
--- No ETL tool needed - Snowflake's COPY INTO command handles S3 → table loading
--- with exactly-once semantics (tracks loaded files, skips duplicates).
---
--- Alternative approaches:
---   - Snowpipe (auto-ingest on S3 event) - better for real-time, costs more
---   - 3rd party ETL (Fivetran, Airbyte) - managed but expensive
---   - COPY INTO (manual/scheduled) - cheapest, sufficient for batch loads
--- =============================================================================
-
 USE DATABASE EVENT_ANALYTICS;
 USE SCHEMA ANALYTICS;
 USE WAREHOUSE COMPUTE_XS;
 
 -- ===========================================================================
 -- Step 1: Create S3 External Stage
--- ===========================================================================
--- INTERVIEW NOTE: A Snowflake STAGE is a pointer to an external location (S3).
--- It stores the S3 path, credentials, and file format so you don't repeat
--- them in every COPY INTO command.
-
--- Option A: Using Storage Integration (recommended for production)
--- CREATE STORAGE INTEGRATION s3_integration
---     TYPE = EXTERNAL_STAGE
---     STORAGE_PROVIDER = S3
---     ENABLED = TRUE
---     STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::YOUR_ACCOUNT:role/snowflake-s3-role'
---     STORAGE_ALLOWED_LOCATIONS = ('s3://YOUR-BUCKET-NAME/');
-
--- Option B: Using AWS keys directly (simpler for portfolio, less secure)
 CREATE OR REPLACE STAGE gold_stage
     URL = 's3://YOUR-BUCKET-NAME/gold/'
     CREDENTIALS = (
@@ -48,15 +23,6 @@ LIST @gold_stage;
 
 -- ===========================================================================
 -- Step 2: Load Gold Tables from Delta Lake / Parquet
--- ===========================================================================
--- INTERVIEW NOTE: COPY INTO is idempotent by default. Snowflake tracks which
--- files have been loaded (in metadata). Running COPY INTO twice on the same
--- files skips already-loaded files. This prevents duplicates without any
--- custom dedup logic. To force reload: COPY INTO ... FORCE = TRUE.
-
--- ---------------------------------------------------------------------------
--- Load Daily Active Users
--- ---------------------------------------------------------------------------
 COPY INTO gold_daily_active_users (
     event_date, daily_active_users, total_events, purchasing_users, loaded_at
 )
@@ -166,14 +132,6 @@ ON_ERROR = CONTINUE;
 
 -- ===========================================================================
 -- Step 3: Populate Dimension Tables from Fact Data
--- ===========================================================================
--- INTERVIEW NOTE: In production, dimensions come from source systems (CRM,
--- product catalog). Here we derive them from fact_events since we only have
--- event data. MERGE ensures idempotent updates - running twice = same result.
-
--- ---------------------------------------------------------------------------
--- Populate dim_users (MERGE for incremental update)
--- ---------------------------------------------------------------------------
 MERGE INTO dim_users AS target
 USING (
     SELECT

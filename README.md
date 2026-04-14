@@ -146,7 +146,7 @@ The silver→gold pipeline uses watermark-based incremental processing:
 
 | Service | Cost | Notes |
 |---------|------|-------|
-| Kinesis (1 shard) | ~$11 | Delete when not studying |
+| Kinesis (1 shard) | ~$11 | Hourly shard cost applies |
 | Lambda | < $1 | Free tier |
 | S3 | < $1 | Free tier |
 | Databricks Community | $0 | Free forever |

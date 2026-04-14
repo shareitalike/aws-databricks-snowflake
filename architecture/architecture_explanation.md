@@ -128,7 +128,7 @@ At 10K events, both take seconds. At 10M events/day after 1 year (3.6B rows), fu
 
 | Service | Estimated Cost | Notes |
 |---------|---------------|-------|
-| Kinesis (1 shard) | ~$11 | Delete when not studying |
+| Kinesis (1 shard) | ~$11 | Hourly shard cost applies |
 | Lambda | < $1 | Free tier: 1M invocations |
 | S3 | < $1 | Free tier: 5 GB |
 | Databricks | $0 | Community Edition is free |

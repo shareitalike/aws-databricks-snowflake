@@ -4,22 +4,6 @@
 -- These queries work on both Snowflake (silver/gold tables) and Athena (S3 direct).
 -- Each query includes: business purpose, partition filter, performance notes.
 --
--- INTERVIEW NOTE: Every production query MUST include date filters.
--- Athena charges $5/TB scanned - no filter = full scan = expensive.
--- Snowflake prunes micro-partitions when WHERE clauses match CLUSTER BY keys.
--- =============================================================================
-
--- ---------------------------------------------------------------------------
--- Query 1: Daily Active Users (DAU)
--- ---------------------------------------------------------------------------
--- BUSINESS PURPOSE: Track engagement trends. DAU dropping 20% overnight
--- signals an outage, broken feature, or marketing campaign ending.
---
--- PERFORMANCE: CLUSTER BY event_date makes this query scan only the
--- relevant micro-partitions. COUNT(DISTINCT) is exact but O(n) memory.
--- For 100M+ rows, use APPROX_COUNT_DISTINCT (HyperLogLog, <2% error, 10x faster).
-
--- Snowflake version (from fact table)
 SELECT
     event_date,
     COUNT(DISTINCT user_id)     AS daily_active_users,
@@ -198,11 +182,6 @@ LIMIT 20;
 
 -- ===========================================================================
 -- BONUS: Cross-dimensional analysis using star schema JOINs
--- ===========================================================================
--- INTERVIEW NOTE: This is why star schema exists - combining dimensions in
--- one query without complex subqueries. This query finds weekday vs weekend
--- revenue by device type - impossible without dim_date.
-
 SELECT
     d.day_name,
     d.is_weekend,

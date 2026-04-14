@@ -1,13 +1,6 @@
 """
 Event Producer — Simulates e-commerce user activity and sends to Kinesis.
 
-INTERVIEW NOTE: Why a custom producer?
-DECISION: We need precise control over event shape, funnel distribution, and
-    bad record injection (5%) to validate the downstream pipeline end-to-end.
-    A generic load testing tool (Locust, k6) can generate HTTP traffic but
-    can't produce domain-specific JSON with controlled error patterns.
-TRADEOFF: More code to maintain vs. complete simulation control.
-
 Usage:
     python event_generator.py --total-events 5000 --eps 10 --batch-size 25
 
@@ -34,14 +27,6 @@ from botocore.exceptions import ClientError
 
 # ============================================================================
 # Structured Logging
-# ============================================================================
-# INTERVIEW NOTE: Why structured logging instead of print()?
-# In production, Lambda/Kinesis/Glue all feed logs to CloudWatch. Structured
-# log lines with consistent fields let you run CloudWatch Insights queries:
-#     filter component = "producer" | stats count(*) by status
-# print() gives you unstructured text that's impossible to aggregate.
-# At 1M events/day, you NEED queryable logs to debug issues fast.
-
 logging.basicConfig(
     level=logging.INFO,
     format='{"timestamp":"%(asctime)s","level":"%(levelname)s","component":"event_producer","message":"%(message)s"}',
@@ -51,16 +36,6 @@ logger = logging.getLogger("event_producer")
 
 # ============================================================================
 # Event Distribution — Realistic E-commerce Funnel
-# ============================================================================
-# INTERVIEW NOTE: Why these specific percentages?
-# Real e-commerce data follows a funnel: most users browse (product_view),
-# fewer add to cart, even fewer purchase. The 60/20/10 ratio is based on
-# typical conversion rates:
-#   - Industry avg cart-to-view rate: ~30% (we use 33%)
-#   - Industry avg purchase-to-cart rate: ~50% (we use 50%)
-# This makes downstream funnel queries produce realistic conversion rates,
-# not synthetic 20%/20%/20% uniform noise that looks fake in a portfolio demo.
-
 EVENT_TYPES_WEIGHTED: list[tuple[str, int]] = [
     ("product_view", 60),
     ("add_to_cart", 20),
@@ -120,12 +95,6 @@ def generate_valid_event() -> dict[str, Any]:
 def generate_bad_event() -> dict[str, Any]:
     """
     Generate an intentionally malformed event for testing validation.
-
-    INTERVIEW NOTE: Bad record injection is critical for portfolio credibility.
-    An interviewer who sees only perfect data flowing through will ask:
-    "What happens when data is bad?" If you can show quarantine files in S3
-    with specific rejection reasons, it proves the validation layer works —
-    not just that it exists in code.
     """
     corruption = random.choice([
         "missing_field",
@@ -184,20 +153,6 @@ def send_batch_to_kinesis(
 ) -> int:
     """
     Send a batch of records to Kinesis with exponential backoff retry.
-
-    INTERVIEW NOTE: Why batching?
-    put_records() sends up to 500 records in ONE API call. Individual
-    put_record() calls would need 500 separate HTTP round trips.
-    At $0.014 per 25KB PUT payload unit, batching packs more records per
-    unit. Example: 25 records × 200 bytes each = 5KB = 1 payload unit.
-    Without batching: 25 separate calls = 25 payload units = 25x cost.
-
-    INTERVIEW NOTE: Why exponential backoff?
-    When Kinesis throttles (shard at capacity), retrying immediately just
-    adds more pressure. Exponential backoff (1s → 2s → 4s) gives the
-    service time to recover. Adding random jitter (0-1s) prevents the
-    "thundering herd" problem where 10 producers all retry at exactly
-    the same second after a throttle event.
     """
     kinesis_records = [
         {

@@ -1,16 +1,6 @@
 # =============================================================================
 # Real-Time Event Analytics Platform — Configuration
 # =============================================================================
-# INTERVIEW NOTE: Why centralize config in YAML?
-# In a real company, you'd have dev/staging/prod config files. Centralizing
-# avoids hardcoded values scattered across Lambda, Databricks, and Snowflake.
-# Sensitive values (passwords, keys) belong in AWS Secrets Manager or
-# Databricks Secrets — NEVER in source control.
-#
-# INTERVIEW NOTE (scaling): This config drives a free-tier setup. At scale,
-# you'd increase shard_count (e.g., 10 shards = 10 MB/s = 10K records/s),
-# use Glue G.2X workers, and Snowflake MEDIUM+ warehouse.
-# =============================================================================
 
 aws:
   region: "ap-south-1"
@@ -39,9 +29,8 @@ lambda:
 databricks:
   cluster_type: "community_edition"       # Free single-node cluster
   spark_version: "13.3 LTS"
-  # INTERVIEW NOTE: Community Edition gives you a single-node Spark cluster.
-  # Limited to ~15 GB RAM. Sufficient for 10K events. At scale, you'd use
-  # multi-node clusters with autoscaling (2-8 workers).
+  # Community Edition limits are sufficient for this demo. At scale,
+  # use multi-node clusters with autoscaling.
 
 snowflake:
   account: "YOUR_SNOWFLAKE_ACCOUNT"
@@ -49,9 +38,7 @@ snowflake:
   database: "EVENT_ANALYTICS"
   schema: "ANALYTICS"
   auto_suspend_seconds: 60                # Suspend after 60s idle — cost control
-  # INTERVIEW NOTE: X-Small is the cheapest warehouse ($2/credit).
-  # Auto-suspend at 60s means you pay only for active query time.
-  # At scale, MEDIUM warehouse + query caching handles dashboards.
+  # Auto-suspend at 60s helps keep costs low during development.
 
 athena:
   database_name: "event_analytics"

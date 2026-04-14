@@ -2,12 +2,6 @@
 Unit Tests for Data Quality Module.
 
 Run with: python -m pytest tests/test_data_quality.py -v
-
-INTERVIEW NOTE: Why test the validation module?
-Validation rules are the contract between raw data and clean data.
-If a rule silently changes (e.g., someone removes a country from the
-valid list), legitimate records get quarantined. Tests catch this
-drift before it reaches production.
 """
 
 from __future__ import annotations

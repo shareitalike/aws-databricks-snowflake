@@ -6,26 +6,10 @@ from pyspark.sql.types import (
 )
 
 """
-INTERVIEW NOTE: Centralizing schemas in a single module is a "Production-First" 
-practice. It ensures that your Producer, Lambda, Batch ETL, and Streaming ETL 
-all agree on the "Data Contract." If the business adds a new field (e.g., product_category), 
-you update it here in ONE place, and your entire pipeline stays consistent.
 """
 
 # ============================================================================
 # Bronze Table Schema (Raw Ingestion)
-# ============================================================================
-# DECISION: We use StringType for timestamps in Bronze to avoid data loss 
-# during malformed ingestion. We cast to proper TimestampType in the Silver layer.
-# 
-# TRADEOFF: DoubleType vs DecimalType for price.
-# - Double (8 bytes) is faster for large-scale scientific calculations.
-# - Decimal (up to 38 precision) is standard for financial data to avoid 
-#   floating-point rounding errors (e.g., 0.1 + 0.2 != 0.3).
-# In this learning project, we use Double for simplicity, but in a real Bank 
-# project, we would use Decimal(18, 2).
-# ============================================================================
-
 BRONZE_SCHEMA = StructType([
     StructField("event_id", StringType(), nullable=False),
     StructField("event_time", StringType(), nullable=False),

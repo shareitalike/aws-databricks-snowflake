@@ -1,29 +1,6 @@
 """
 Lambda Ingestion Handler — Validates Kinesis events and routes to S3.
 
-INTERVIEW NOTE: Why Lambda instead of Kinesis Data Firehose?
-DECISION: Firehose delivers to S3 directly but has ZERO validation capability.
-    Every record — valid or garbage — lands in the data lake. Lambda lets us:
-    1. Validate schema/types/enums BEFORE storage
-    2. Route invalid records to quarantine (with rejection reason)
-    3. Enrich records with ingestion_timestamp (audit trail)
-    4. Apply business rules at the ingestion boundary
-TRADEOFF: Lambda adds one more component vs. Firehose's zero-code setup.
-    But the cost difference is negligible (~$1/month at our scale), while
-    the data quality benefit is enormous.
-
-Example cost comparison at 10K events/day:
-    Firehose: ~$0.035/GB ingested = ~$0.001/day → BUT bad data cleanup costs hours
-    Lambda:   ~1000 invocations × $0.0000002 = ~$0.0002/day → clean data from day 1
-
-INTERVIEW NOTE: How Lambda handles Kinesis at-least-once delivery
-    Kinesis guarantees at-least-once delivery. Lambda may process the same
-    batch twice if it fails mid-execution. We handle this by:
-    1. UUID filenames → no overwrite risk (worst case: duplicate file)
-    2. Deduplication in silver layer (Databricks dropDuplicates on event_id)
-    This is the standard medallion approach — accept potential dupes in bronze,
-    remove in silver.
-
 Environment Variables:
     S3_BUCKET         — Target S3 bucket
     BRONZE_PREFIX     — S3 prefix for valid records
@@ -70,19 +47,6 @@ def write_records_to_s3(
 ) -> str:
     """
     Write records as newline-delimited JSON to S3 with Hive partitioning.
-
-    INTERVIEW NOTE: Why NDJSON (newline-delimited JSON)?
-    Each line is one complete JSON object. Benefits:
-    1. Appendable — add lines without rewriting the file
-    2. Splittable — Spark/Athena parallelize reads across lines
-    3. Debuggable — read individual lines with head/tail/jq
-    CSV looks simpler but struggles with nested fields and escaping.
-
-    INTERVIEW NOTE: Why UUID filenames?
-    If Lambda processes the same Kinesis batch twice (at-least-once delivery),
-    each invocation writes a DIFFERENT file (different UUID). No data is
-    overwritten. The silver layer deduplicates on event_id, so duplicate
-    files are harmless. This is idempotency through append-only design.
     """
     partition_path = (
         f"{prefix}/"
@@ -193,11 +157,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             }))
 
     # --- Batch write to S3 ---
-    # INTERVIEW NOTE: Why batch writes instead of per-record?
-    # S3 PUT requests cost $0.005 per 1000 requests. Writing 100 records as
-    # 100 individual files = 100 PUTs. Writing as 1 batch = 1 PUT.
-    # Also avoids the "small file problem" — thousands of tiny files are
-    # expensive to list and slow for Spark to read (each file = 1 task).
     if valid_records:
         write_records_to_s3(valid_records, BRONZE_PREFIX, now)
 

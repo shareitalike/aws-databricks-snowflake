@@ -17,9 +17,6 @@
 # MAGIC ## 1. Configuration & Schema Setup
 
 # COMMAND ----------
-
-# INTERVIEW NOTE: We use the EXACT same Schema as our Batch job. 
-# This is "Unified" design.
 from pyspark.sql import functions as F
 from pyspark.sql.types import *
 
@@ -30,9 +27,6 @@ SILVER_PATH = f"s3a://{S3_BUCKET}/silver/events"
 CHECKPOINT_PATH = f"s3a://{S3_BUCKET}/_checkpoints/bronze_to_silver"
 
 # --- EXPLICIT SCHEMA (Industry Best Practice) ---
-# DECISION: We define the schema explicitly instead of using 'inferSchema'.
-# This prevents string fields from being guessed as integers (or vice-versa) 
-# which could crash the stream after 24 hours of successful running!
 BRONZE_SCHEMA = StructType([
     StructField("event_id", StringType(), False),
     StructField("event_time", StringType(), False),
@@ -52,13 +46,6 @@ BRONZE_SCHEMA = StructType([
 # MAGIC ## 2. Read Stream (Auto Loader)
 
 # COMMAND ----------
-
-# INTERVIEW NOTE: Why CloudFiles?
-# Standard 'json' stream looks at ALL files every time to see what is new. 
-# This gets slower as the bucket grows (O(N)). 
-# CloudFiles uses a file notification service or incremental listing to 
-# only check for NEW files (O(1)). It scales to billions of files.
-
 streaming_df = (spark.readStream
     .format("cloudFiles")
     .option("cloudFiles.format", "json")
@@ -90,12 +77,6 @@ transformed_df = (streaming_df
 # MAGIC ## 4. Write Stream to Delta
 
 # COMMAND ----------
-
-# INTERVIEW NOTE: Why Checkpointing?
-# The 'checkpointLocation' saves the "bookmark" of the stream. 
-# If the Databricks cluster crashes, we restart the stream and it 
-# picks up exactly where it left off. NO DATA LOSS.
-
 query = (transformed_df.writeStream
     .format("delta")
     .outputMode("append")
